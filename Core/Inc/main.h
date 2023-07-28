@@ -75,8 +75,15 @@ void Error_Handler(void);
 #define OSC_IN_GPIO_Port GPIOF
 #define OSC_OUT_Pin GPIO_PIN_1
 #define OSC_OUT_GPIO_Port GPIOF
-#define B1_Pin GPIO_PIN_0
-#define B1_GPIO_Port GPIOA
+#define LD_Ext_red_Pin GPIO_PIN_0
+#define LD_Ext_red_GPIO_Port GPIOC
+#define BT_Blue_Pin GPIO_PIN_0
+#define BT_Blue_GPIO_Port GPIOA
+#define BT_Blue_EXTI_IRQn EXTI0_IRQn
+#define AnIn_CO_Pin GPIO_PIN_1
+#define AnIn_CO_GPIO_Port GPIOA
+#define Buzzer_Pin GPIO_PIN_2
+#define Buzzer_GPIO_Port GPIOA
 #define SPI1_SCK_Pin GPIO_PIN_5
 #define SPI1_SCK_GPIO_Port GPIOA
 #define SPI1_MISO_Pin GPIO_PIN_6
@@ -99,6 +106,10 @@ void Error_Handler(void);
 #define LD8_GPIO_Port GPIOE
 #define LD6_Pin GPIO_PIN_15
 #define LD6_GPIO_Port GPIOE
+#define LD_Ext_green_Pin GPIO_PIN_11
+#define LD_Ext_green_GPIO_Port GPIOD
+#define PWM_Servo_Pin GPIO_PIN_6
+#define PWM_Servo_GPIO_Port GPIOC
 #define DM_Pin GPIO_PIN_11
 #define DM_GPIO_Port GPIOA
 #define DP_Pin GPIO_PIN_12
@@ -113,8 +124,6 @@ void Error_Handler(void);
 #define I2C1_SCL_GPIO_Port GPIOB
 #define I2C1_SDA_Pin GPIO_PIN_7
 #define I2C1_SDA_GPIO_Port GPIOB
-#define MEMS_INT1_Pin GPIO_PIN_0
-#define MEMS_INT1_GPIO_Port GPIOE
 #define MEMS_INT2_Pin GPIO_PIN_1
 #define MEMS_INT2_GPIO_Port GPIOE
 

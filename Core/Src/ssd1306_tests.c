@@ -309,6 +309,10 @@ void ssd1306_TestDrawBitmap()
     ssd1306_Fill(White);
     ssd1306_DrawBitmap(32,0,github_logo_64x64,64,64,Black);
     ssd1306_UpdateScreen();
+   /// HAL_Delay(3000);
+    // ssd1306_Fill(Black);
+    // ssd1306_DrawBitmap(0,0,amongus_bitmap,128,64,White);
+    // ssd1306_UpdateScreen();
 }
 
 void ssd1306_TestAll() {
