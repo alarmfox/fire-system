@@ -239,7 +239,6 @@ int main(void)
 	  T = (1.0 / (c1 + c2*logR2 + c3*logR2*logR2*logR2));
 	  T = T - 273.15;
 	  ssd1306_Fill(Black);
-	  memset(message, 0, sizeof(message));
 
 	  sprintf(message, "T: %d\n", (int)T);
 	  ssd1306_SetCursor(2, 0);
@@ -600,7 +599,7 @@ static void MX_GPIO_Init(void)
                           |LD6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, LD_Ext_red_Pin|GPIO_PIN_2, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD_Ext_red_GPIO_Port, LD_Ext_red_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
@@ -625,12 +624,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD_Ext_red_Pin PC2 */
-  GPIO_InitStruct.Pin = LD_Ext_red_Pin|GPIO_PIN_2;
+  /*Configure GPIO pin : LD_Ext_red_Pin */
+  GPIO_InitStruct.Pin = LD_Ext_red_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(LD_Ext_red_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BT_Blue_Pin */
   GPIO_InitStruct.Pin = BT_Blue_Pin;
@@ -644,12 +643,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Buzzer_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SPI1_SCK_Pin SPI1_MISO_Pin SPI1_MISOA7_Pin */
   GPIO_InitStruct.Pin = SPI1_SCK_Pin|SPI1_MISO_Pin|SPI1_MISOA7_Pin;
