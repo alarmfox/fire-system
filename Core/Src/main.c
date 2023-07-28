@@ -225,7 +225,7 @@ int main(void)
   float R1 = 100000;
   float logR2, R2, T;
   float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
-  char message [32] = "\0";
+  char message [64] = "\0";
   while (1)
   {
     /* USER CODE END WHILE */
@@ -240,7 +240,7 @@ int main(void)
 	  T = T - 273.15;
 	  ssd1306_Fill(Black);
 
-	  sprintf(message, "T: %d\n", (int)T);
+	  sprintf(message, "Temp: %.2f °C\n", T);
 	  ssd1306_SetCursor(2, 0);
 	  ssd1306_WriteString(message, Font_11x18, White);
 	  ssd1306_DrawBitmap(32, 32, amongus_bitmap, 128, 64, White);
