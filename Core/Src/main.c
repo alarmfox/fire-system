@@ -34,6 +34,14 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define coefficient_A 19.32
+#define coefficient_B -0.64
+#define R_Load 10.0
+
+#define C1 1.009249522e-03
+#define C2 2.4538405444e-04
+#define C3 4.389e-08
+#define R1 100000
 
 /* USER CODE END PD */
 
@@ -53,10 +61,8 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 int i = 0;
-uint16_t co_value = 0;
 
-
-// 'Among-Us-Symbol(1)(1)', 128x64px
+// 'Among-Us-Symbol', 128x64px
 const unsigned char amongus_bitmap[] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -136,20 +142,82 @@ static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
+float read_co(ADC_HandleTypeDef *hadc, float* vout, int *raw);
+float read_temperature(ADC_HandleTypeDef *hadc);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
+	float temp, co, co_vout;
+	char message [64] = "\0";
+	int raw_co;
 
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 1);
-	co_value = HAL_ADC_GetValue(&hadc1);
+	// co
+	co = read_co(&hadc1, &co_vout, &raw_co);
 
+	// temp
+	temp = read_temperature(&hadc2);
+
+	// screen
+	ssd1306_Fill(Black);
+	sprintf(message, "Temp: %.2f C\n", temp);
+	ssd1306_SetCursor(2, 0);
+	ssd1306_WriteString(message, Font_7x10, White);
+
+	ssd1306_SetCursor(2, 16);
+	sprintf(message, "CO: %.2f ppm", co);
+	ssd1306_WriteString(message, Font_7x10, White);
+
+	ssd1306_SetCursor(2, 28);
+	sprintf(message, "V Out: %.2f V", co_vout);
+	ssd1306_WriteString(message, Font_7x10, White);
+
+	ssd1306_SetCursor(2, 40);
+	sprintf(message, "ADC Out: %d", raw_co);
+	ssd1306_WriteString(message, Font_7x10, White);
+
+	// ssd1306_DrawBitmap(32, 32, amongus_bitmap, 128, 64, White);
+	ssd1306_UpdateScreen();
+
+	// pin
  	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
+ 	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
 
+}
+
+float read_temperature(ADC_HandleTypeDef *hadc) {
+	int Vo;
+	float logR2, R2, T;
+
+	HAL_ADC_Start(hadc);
+	HAL_ADC_PollForConversion(hadc, 1);
+	Vo = HAL_ADC_GetValue(hadc);
+	R2 = R1 * (4095.0 / (float)Vo - 1.0);
+	logR2 = log(R2);
+	T = (1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2));
+	T = T - 273.15;
+	return T;
+}
+
+float read_co(ADC_HandleTypeDef *hadc, float *v_out, int* raw) {
+	float RS_gas = 0;
+	float ratio = 0;
+	float sensor_volt = 0;
+	float R0 = 35816.0;
+	HAL_ADC_Start(hadc);
+	HAL_ADC_PollForConversion(hadc, 1);
+	int sensor_value = HAL_ADC_GetValue(hadc);
+
+	sensor_volt = sensor_value/4095.0*5.0;
+	RS_gas = (5.0-sensor_volt)/sensor_volt;
+	ratio = RS_gas/R0;
+	float x = 1538.46 * ratio;
+
+	*raw = sensor_value;
+	*v_out = sensor_volt;
+	return pow(x,-1.709);
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -212,40 +280,21 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim2);
-  ssd1306_Init();
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);
+  ssd1306_Init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  ssd1306_Fill(Black);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1500);
 
-
-  int Vo;
-  float R1 = 100000;
-  float logR2, R2, T;
-  float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
-  char message [64] = "\0";
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_ADC_Start(&hadc2);
-	  HAL_ADC_PollForConversion(&hadc2, 1);
-	  Vo = HAL_ADC_GetValue(&hadc2);
-	  R2 = R1 * (4095.0 / (float)Vo - 1.0);
-	  logR2 = log(R2);
-	  T = (1.0 / (c1 + c2*logR2 + c3*logR2*logR2*logR2));
-	  T = T - 273.15;
-	  ssd1306_Fill(Black);
 
-	  sprintf(message, "Temp: %.2f °C\n", T);
-	  ssd1306_SetCursor(2, 0);
-	  ssd1306_WriteString(message, Font_11x18, White);
-	  ssd1306_DrawBitmap(32, 32, amongus_bitmap, 128, 64, White);
-	  ssd1306_UpdateScreen();
-	  HAL_Delay(2000);
 
   }
   /* USER CODE END 3 */
