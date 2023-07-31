@@ -39,12 +39,14 @@
 #define R_Load 10.0
 
 #define C1 1.009249522e-03
-#define C2 2.4538405444e-04
-#define C3 4.389e-08
-#define R1 100000
+#define C2 2.378405444e-04
+#define C3 2.019202697e-07
+#define R1 10000
 
 #define BLUE_BUTTON_MASK 0x0001
 #define EXT_BUTTON_MASK  0x0400
+
+#define ADC_RESOLUTION 4095.0
 
 /* USER CODE END PD */
 
@@ -55,7 +57,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -144,10 +145,8 @@ static void MX_ADC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
-float read_co(ADC_HandleTypeDef *hadc, float* vout, int *raw);
-float read_temperature(ADC_HandleTypeDef *hadc);
+float read_co(ADC_HandleTypeDef hadc, float* vout, int *raw);
 void handle_alarm();
 
 /* USER CODE END PFP */
@@ -157,20 +156,21 @@ void handle_alarm();
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	float temp, co, co_vout;
 	char message [128] = "\0";
-	int raw_co, y = 0;
+	int adc_out, y = 0;
 
 	// co
-	co = read_co(&hadc1, &co_vout, &raw_co);
+	co = read_co(hadc1, &co_vout, &adc_out);
 
-	// temp
-    temp = read_temperature(&hadc2);
+    if (adc_out > 1000 && on == 1) {
+    	handle_alarm();
+    }
 
 	ssd1306_Fill(Black);
 
-	if (raw_co > 1000 && on == 1 && on_fire == 1) {
+
+	if (on_fire == 1) {
 		ssd1306_SetCursor(32, y);
 	    ssd1306_WriteString("ALLARME", Font_7x10, White);
-		handle_alarm();
 	} else if (on == 1) {
 		ssd1306_SetCursor(2, y);
 		sprintf(message, "Monit. ON");
@@ -194,15 +194,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 	y+=12;
 	ssd1306_SetCursor(2, y);
-	sprintf(message, "ADC Out: %d", raw_co);
+	sprintf(message, "ADC Out: %d", adc_out);
 	ssd1306_WriteString(message, Font_7x10, White);
 
-	y+=12;
-	sprintf(message, "Temp: %.2f C\n", temp);
-    ssd1306_SetCursor(2, y);
-	ssd1306_WriteString(message, Font_7x10, White);
-
-	// ssd1306_DrawBitmap(32, 32, amongus_bitmap, 128, 64, White);
+	// ssd1306_DrawBitmap(64, 32, amongus_bitmap, 128, 64, White);
 	ssd1306_UpdateScreen();
 
 	// pin
@@ -210,30 +205,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 }
 
-float read_temperature(ADC_HandleTypeDef *hadc) {
-	int Vo;
-	float logR2, R2, T;
-
-	HAL_ADC_Start(hadc);
-	HAL_ADC_PollForConversion(hadc, 1);
-	Vo = HAL_ADC_GetValue(hadc);
-	R2 = R1 * (4095.0 / (float)Vo - 1.0);
-	logR2 = log(R2);
-	T = (1.0 / (C1 + C2*logR2 + C3*logR2*logR2*logR2));
-	T = T - 273.15;
-	return T;
-}
-
-float read_co(ADC_HandleTypeDef *hadc, float *v_out, int* raw) {
+float read_co(ADC_HandleTypeDef hadc, float *v_out, int* raw) {
 	float RS_gas = 0;
 	float ratio = 0;
 	float sensor_volt = 0;
 	float R0 = 35816.0;
-	HAL_ADC_Start(hadc);
-	HAL_ADC_PollForConversion(hadc, 1);
-	int sensor_value = HAL_ADC_GetValue(hadc);
+	HAL_ADC_Start(&hadc);
+	HAL_ADC_PollForConversion(&hadc, 1);
+	int sensor_value = HAL_ADC_GetValue(&hadc);
 
-	sensor_volt = sensor_value/4095.0*5.0;
+	sensor_volt = sensor_value/ADC_RESOLUTION*5.0;
 	RS_gas = (5.0-sensor_volt)/sensor_volt;
 	ratio = RS_gas/R0;
 	float x = 1538.46 * ratio;
@@ -246,12 +227,12 @@ float read_co(ADC_HandleTypeDef *hadc, float *v_out, int* raw) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   // pulsante esterno
   if ((GPIO_Pin & ~EXT_BUTTON_MASK) == 0) {
-	  on = (on + 1) % 2;
-	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_11);
-	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
+	  on = !on;
+	  on_fire = 0;
+	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
 	  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1500);
-	  return;
 
   }
 
@@ -260,25 +241,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	  if (on == 1) {
 		  handle_alarm();
 	  }
-
- 	  return;
-
    }
 
 }
 
 void handle_alarm() {
+
 	// set on_fire true
 	on_fire = 1;
 	// buzzer on
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
+	// HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
 
 	// red led on
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);
 
 
 	// servo 90°
 	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 2350);
+
 
 }
 /* USER CODE END 0 */
@@ -315,11 +295,10 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
-  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim2);
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
   ssd1306_Init();
 
   /* USER CODE END 2 */
@@ -333,13 +312,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET);
-//	  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_SET);
-//
-//	  HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
-//
-//	  HAL_Delay(2000);
-
 
   }
   /* USER CODE END 3 */
@@ -456,63 +428,6 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * @brief ADC2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC2_Init(void)
-{
-
-  /* USER CODE BEGIN ADC2_Init 0 */
-
-  /* USER CODE END ADC2_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC2_Init 1 */
-
-  /* USER CODE END ADC2_Init 1 */
-
-  /** Common config
-  */
-  hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
-  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
-  hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.NbrOfConversion = 1;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
-  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc2.Init.LowPowerAutoWait = DISABLE;
-  hadc2.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
-  if (HAL_ADC_Init(&hadc2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_7;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SingleDiff = ADC_SINGLE_ENDED;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-  sConfig.OffsetNumber = ADC_OFFSET_NONE;
-  sConfig.Offset = 0;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC2_Init 2 */
-
-  /* USER CODE END ADC2_Init 2 */
 
 }
 
@@ -696,7 +611,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LD_Ext_green_Pin|GPIO_PIN_12, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LD_Ext_green_Pin|LD_Ext_red_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : DRDY_Pin MEMS_INT3_Pin MEMS_INT4_Pin MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT3_Pin|MEMS_INT4_Pin|MEMS_INT2_Pin;
@@ -736,8 +651,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD_Ext_green_Pin PD12 */
-  GPIO_InitStruct.Pin = LD_Ext_green_Pin|GPIO_PIN_12;
+  /*Configure GPIO pins : LD_Ext_green_Pin LD_Ext_red_Pin */
+  GPIO_InitStruct.Pin = LD_Ext_green_Pin|LD_Ext_red_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
