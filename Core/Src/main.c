@@ -43,6 +43,9 @@
 #define C3 4.389e-08
 #define R1 100000
 
+#define BLUE_BUTTON_MASK 0x0001
+#define EXT_BUTTON_MASK  0x0400
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -60,7 +63,8 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
-int i = 0;
+int on = 1;
+int on_fire = 0;
 
 // 'Among-Us-Symbol', 128x64px
 const unsigned char amongus_bitmap[] = {
@@ -144,6 +148,7 @@ static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 float read_co(ADC_HandleTypeDef *hadc, float* vout, int *raw);
 float read_temperature(ADC_HandleTypeDef *hadc);
+void handle_alarm();
 
 /* USER CODE END PFP */
 
@@ -151,38 +156,56 @@ float read_temperature(ADC_HandleTypeDef *hadc);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	float temp, co, co_vout;
-	char message [64] = "\0";
-	int raw_co;
+	char message [128] = "\0";
+	int raw_co, y = 0;
 
 	// co
 	co = read_co(&hadc1, &co_vout, &raw_co);
 
 	// temp
-	temp = read_temperature(&hadc2);
+    temp = read_temperature(&hadc2);
 
-	// screen
 	ssd1306_Fill(Black);
-	sprintf(message, "Temp: %.2f C\n", temp);
-	ssd1306_SetCursor(2, 0);
-	ssd1306_WriteString(message, Font_7x10, White);
 
-	ssd1306_SetCursor(2, 16);
+	if (raw_co > 1000 && on == 1 && on_fire == 1) {
+		ssd1306_SetCursor(32, y);
+	    ssd1306_WriteString("ALLARME", Font_7x10, White);
+		handle_alarm();
+	} else if (on == 1) {
+		ssd1306_SetCursor(2, y);
+		sprintf(message, "Monit. ON");
+	    ssd1306_WriteString(message, Font_7x10, White);
+	} else if (on == 0) {
+		ssd1306_SetCursor(2, y);
+	    sprintf(message, "Monit. OFF");
+		ssd1306_WriteString(message, Font_7x10, White);
+	}
+
+
+	y+=16;
+	ssd1306_SetCursor(2, y);
 	sprintf(message, "CO: %.2f ppm", co);
 	ssd1306_WriteString(message, Font_7x10, White);
 
-	ssd1306_SetCursor(2, 28);
+	y+=12;
+	ssd1306_SetCursor(2, y);
 	sprintf(message, "V Out: %.2f V", co_vout);
 	ssd1306_WriteString(message, Font_7x10, White);
 
-	ssd1306_SetCursor(2, 40);
+	y+=12;
+	ssd1306_SetCursor(2, y);
 	sprintf(message, "ADC Out: %d", raw_co);
+	ssd1306_WriteString(message, Font_7x10, White);
+
+	y+=12;
+	sprintf(message, "Temp: %.2f C\n", temp);
+    ssd1306_SetCursor(2, y);
 	ssd1306_WriteString(message, Font_7x10, White);
 
 	// ssd1306_DrawBitmap(32, 32, amongus_bitmap, 128, 64, White);
 	ssd1306_UpdateScreen();
 
 	// pin
- 	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
  	HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_15);
 
 }
@@ -221,25 +244,41 @@ float read_co(ADC_HandleTypeDef *hadc, float *v_out, int* raw) {
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(GPIO_Pin);
+  // pulsante esterno
+  if ((GPIO_Pin & ~EXT_BUTTON_MASK) == 0) {
+	  on = (on + 1) % 2;
+	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_11);
+	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
+	  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1500);
+	  return;
 
-  HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_14);
+  }
 
-  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_2);
+  // pulsante interno
+  if ((GPIO_Pin & ~BLUE_BUTTON_MASK) == 0) {
+	  if (on == 1) {
+		  handle_alarm();
+	  }
+
+ 	  return;
+
+   }
+
+}
+
+void handle_alarm() {
+	// set on_fire true
+	on_fire = 1;
+	// buzzer on
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
+
+	// red led on
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
 
 
-  switch(i) {
-  	case 0:
-  		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1500);
-  		break;
-  	case 1:
-  		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1000);
-  		break;
-  	}
-
-
-  i = (i + 1) % 2;
+	// servo 90°
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 2350);
 
 }
 /* USER CODE END 0 */
@@ -294,6 +333,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+//	  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_RESET);
+//	  while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == GPIO_PIN_SET);
+//
+//	  HAL_GPIO_TogglePin(GPIOE, GPIO_PIN_10);
+//
+//	  HAL_Delay(2000);
 
 
   }
@@ -648,13 +693,10 @@ static void MX_GPIO_Init(void)
                           |LD6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD_Ext_red_GPIO_Port, LD_Ext_red_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD_Ext_green_GPIO_Port, LD_Ext_green_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LD_Ext_green_Pin|GPIO_PIN_12, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : DRDY_Pin MEMS_INT3_Pin MEMS_INT4_Pin MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = DRDY_Pin|MEMS_INT3_Pin|MEMS_INT4_Pin|MEMS_INT2_Pin;
@@ -673,18 +715,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD_Ext_red_Pin */
-  GPIO_InitStruct.Pin = LD_Ext_red_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD_Ext_red_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : BT_Blue_Pin */
-  GPIO_InitStruct.Pin = BT_Blue_Pin;
+  /*Configure GPIO pins : BT_Blue_Pin PA10 */
+  GPIO_InitStruct.Pin = BT_Blue_Pin|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BT_Blue_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : Buzzer_Pin */
   GPIO_InitStruct.Pin = Buzzer_Pin;
@@ -701,12 +736,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LD_Ext_green_Pin */
-  GPIO_InitStruct.Pin = LD_Ext_green_Pin;
+  /*Configure GPIO pins : LD_Ext_green_Pin PD12 */
+  GPIO_InitStruct.Pin = LD_Ext_green_Pin|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD_Ext_green_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : DM_Pin DP_Pin */
   GPIO_InitStruct.Pin = DM_Pin|DP_Pin;
@@ -719,6 +754,9 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

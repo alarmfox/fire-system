@@ -75,8 +75,6 @@ void Error_Handler(void);
 #define OSC_IN_GPIO_Port GPIOF
 #define OSC_OUT_Pin GPIO_PIN_1
 #define OSC_OUT_GPIO_Port GPIOF
-#define LD_Ext_red_Pin GPIO_PIN_0
-#define LD_Ext_red_GPIO_Port GPIOC
 #define Temp_sensor_Pin GPIO_PIN_1
 #define Temp_sensor_GPIO_Port GPIOC
 #define BT_Blue_Pin GPIO_PIN_0
