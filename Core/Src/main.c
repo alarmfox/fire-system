@@ -34,14 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define coefficient_A 19.32
-#define coefficient_B -0.64
-#define R_Load 10.0
-
-#define C1 1.009249522e-03
-#define C2 2.378405444e-04
-#define C3 2.019202697e-07
-#define R1 10000
+#define R0 35816.0
 
 #define BLUE_BUTTON_MASK 0x0001
 #define EXT_BUTTON_MASK  0x0400
@@ -154,7 +147,7 @@ void handle_alarm();
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	float temp, co, co_vout;
+	float co, co_vout;
 	char message [128] = "\0";
 	int adc_out, y = 0;
 
@@ -173,12 +166,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	    ssd1306_WriteString("ALLARME", Font_7x10, White);
 	} else if (on == 1) {
 		ssd1306_SetCursor(2, y);
-		sprintf(message, "Monit. ON");
-	    ssd1306_WriteString(message, Font_7x10, White);
+	    ssd1306_WriteString("Monit. ON", Font_7x10, White);
 	} else if (on == 0) {
 		ssd1306_SetCursor(2, y);
-	    sprintf(message, "Monit. OFF");
-		ssd1306_WriteString(message, Font_7x10, White);
+		ssd1306_WriteString("Monit. OFF", Font_7x10, White);
 	}
 
 
@@ -206,21 +197,21 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 }
 
 float read_co(ADC_HandleTypeDef hadc, float *v_out, int* raw) {
-	float RS_gas = 0;
-	float ratio = 0;
-	float sensor_volt = 0;
-	float R0 = 35816.0;
+	float rs = 0, ratio = 0, sensor_tension = 0;
+	int adc_out = 0;
+
+
 	HAL_ADC_Start(&hadc);
 	HAL_ADC_PollForConversion(&hadc, 1);
-	int sensor_value = HAL_ADC_GetValue(&hadc);
+	adc_out = HAL_ADC_GetValue(&hadc);
 
-	sensor_volt = sensor_value/ADC_RESOLUTION*5.0;
-	RS_gas = (5.0-sensor_volt)/sensor_volt;
-	ratio = RS_gas/R0;
+	sensor_tension = adc_out/ADC_RESOLUTION*5.0;
+	rs = (5.0-sensor_tension)/sensor_tension;
+	ratio = rs/R0;
 	float x = 1538.46 * ratio;
 
-	*raw = sensor_value;
-	*v_out = sensor_volt;
+	*raw = adc_out;
+	*v_out = sensor_tension;
 	return pow(x,-1.709);
 }
 
@@ -249,8 +240,9 @@ void handle_alarm() {
 
 	// set on_fire true
 	on_fire = 1;
+
 	// buzzer on
-	// HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
 
 	// red led on
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_SET);
