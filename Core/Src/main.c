@@ -38,6 +38,7 @@
 
 #define BLUE_BUTTON_MASK 0x0001
 #define EXT_BUTTON_MASK  0x0400
+#define EXT_CO_SENSOR    0x0100
 
 #define ADC_RESOLUTION 4095.0
 
@@ -154,10 +155,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	// co
 	co = read_co(hadc1, &co_vout, &adc_out);
 
-    if (adc_out > 1000 && on == 1) {
-    	handle_alarm();
-    }
-
 	ssd1306_Fill(Black);
 
 
@@ -233,6 +230,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		  handle_alarm();
 	  }
    }
+
+  if ((GPIO_Pin & ~EXT_CO_SENSOR) == 0) {
+ 	  if (on == 1) {
+ 		  handle_alarm();
+ 	  }
+    }
 
 }
 
@@ -650,6 +653,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PC8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pins : DM_Pin DP_Pin */
   GPIO_InitStruct.Pin = DM_Pin|DP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -661,6 +670,9 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
