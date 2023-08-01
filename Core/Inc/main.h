@@ -79,8 +79,8 @@ void Error_Handler(void);
 #define BT_Blue_Pin GPIO_PIN_0
 #define BT_Blue_GPIO_Port GPIOA
 #define BT_Blue_EXTI_IRQn EXTI0_IRQn
-#define AnIn_CO_Pin GPIO_PIN_1
-#define AnIn_CO_GPIO_Port GPIOA
+#define Co_Sensor_AOUT_Pin GPIO_PIN_1
+#define Co_Sensor_AOUT_GPIO_Port GPIOA
 #define Buzzer_Pin GPIO_PIN_2
 #define Buzzer_GPIO_Port GPIOA
 #define SPI1_SCK_Pin GPIO_PIN_5
@@ -111,6 +111,12 @@ void Error_Handler(void);
 #define LD_Ext_red_GPIO_Port GPIOD
 #define PWM_Servo_Pin GPIO_PIN_6
 #define PWM_Servo_GPIO_Port GPIOC
+#define CO_sensor_DOUT_Pin GPIO_PIN_8
+#define CO_sensor_DOUT_GPIO_Port GPIOC
+#define CO_sensor_DOUT_EXTI_IRQn EXTI9_5_IRQn
+#define External_button_Pin GPIO_PIN_10
+#define External_button_GPIO_Port GPIOA
+#define External_button_EXTI_IRQn EXTI15_10_IRQn
 #define DM_Pin GPIO_PIN_11
 #define DM_GPIO_Port GPIOA
 #define DP_Pin GPIO_PIN_12

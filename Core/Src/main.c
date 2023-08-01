@@ -625,8 +625,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BT_Blue_Pin PA10 */
-  GPIO_InitStruct.Pin = BT_Blue_Pin|GPIO_PIN_10;
+  /*Configure GPIO pins : BT_Blue_Pin External_button_Pin */
+  GPIO_InitStruct.Pin = BT_Blue_Pin|External_button_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -653,11 +653,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  /*Configure GPIO pin : CO_sensor_DOUT_Pin */
+  GPIO_InitStruct.Pin = CO_sensor_DOUT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(CO_sensor_DOUT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : DM_Pin DP_Pin */
   GPIO_InitStruct.Pin = DM_Pin|DP_Pin;

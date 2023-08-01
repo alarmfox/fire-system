@@ -102,10 +102,10 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     /**ADC1 GPIO Configuration
     PA1     ------> ADC1_IN2
     */
-    GPIO_InitStruct.Pin = AnIn_CO_Pin;
+    GPIO_InitStruct.Pin = Co_Sensor_AOUT_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(AnIn_CO_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(Co_Sensor_AOUT_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN ADC1_MspInit 1 */
 
@@ -133,7 +133,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     /**ADC1 GPIO Configuration
     PA1     ------> ADC1_IN2
     */
-    HAL_GPIO_DeInit(AnIn_CO_GPIO_Port, AnIn_CO_Pin);
+    HAL_GPIO_DeInit(Co_Sensor_AOUT_GPIO_Port, Co_Sensor_AOUT_Pin);
 
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
