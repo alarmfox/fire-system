@@ -221,25 +221,23 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_11, GPIO_PIN_RESET);
 	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
 	  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1500);
-
   }
 
   // pulsante interno
   if ((GPIO_Pin & ~BLUE_BUTTON_MASK) == 0) {
-	  if (on == 1) {
-		  handle_alarm();
-	  }
-   }
+	  handle_alarm();
+  }
 
+  // co-dout
   if ((GPIO_Pin & ~EXT_CO_SENSOR) == 0) {
- 	  if (on == 1) {
- 		  handle_alarm();
- 	  }
+	  handle_alarm();
     }
 
 }
 
 void handle_alarm() {
+
+	if (on == 0) return;
 
 	// set on_fire true
 	on_fire = 1;
