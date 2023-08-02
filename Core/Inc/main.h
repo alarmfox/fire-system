@@ -105,10 +105,10 @@ void Error_Handler(void);
 #define LD8_GPIO_Port GPIOE
 #define LD6_Pin GPIO_PIN_15
 #define LD6_GPIO_Port GPIOE
-#define LD_Ext_green_Pin GPIO_PIN_11
-#define LD_Ext_green_GPIO_Port GPIOD
-#define LD_Ext_red_Pin GPIO_PIN_12
+#define LD_Ext_red_Pin GPIO_PIN_11
 #define LD_Ext_red_GPIO_Port GPIOD
+#define LD_Ext_green_Pin GPIO_PIN_12
+#define LD_Ext_green_GPIO_Port GPIOD
 #define PWM_Servo_Pin GPIO_PIN_6
 #define PWM_Servo_GPIO_Port GPIOC
 #define CO_sensor_DOUT_Pin GPIO_PIN_8
